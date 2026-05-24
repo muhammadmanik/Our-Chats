@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import Header from './components/Header';
 import MessageList from './components/MessageList';
 import rawData from './chatData.json';
@@ -22,6 +22,28 @@ export default function App() {
     [visibleCount]
   );
 
+  useLayoutEffect(() => {
+    if (visibleMessages && visibleMessages.length > 0) {
+      const forceScrollToBottom = () => {
+        const container = listRef.current || document.getElementById('chat-message-container');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      };
+
+      forceScrollToBottom();
+      const t1 = setTimeout(forceScrollToBottom, 50);
+      const t2 = setTimeout(forceScrollToBottom, 150);
+      const t3 = setTimeout(forceScrollToBottom, 400);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     if (expanded && inputRef.current) inputRef.current.focus();
   }, [expanded]);
@@ -38,7 +60,17 @@ export default function App() {
   }, [expanded]);
 
   const loadMore = () => {
+    const container = listRef.current || document.getElementById('chat-message-container');
+    const previousScrollHeight = container ? container.scrollHeight : 0;
+
     setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allMessages.current.length));
+
+    requestAnimationFrame(() => {
+      if (container) {
+        const heightDifference = container.scrollHeight - previousScrollHeight;
+        container.scrollTop = container.scrollTop + heightDifference;
+      }
+    });
   };
 
   const handleSearch = (text) => {
@@ -52,7 +84,7 @@ export default function App() {
     for (let i = 0; i < allMessages.current.length; i++) {
       const msg = allMessages.current[i];
       if (!msg) continue;
-      const messageText = msg.content;
+      const messageText = msg.content || msg.text || msg.message;
       if (typeof messageText !== 'string') continue;
       if (messageText.toLowerCase().includes(targetQuery)) {
         matches.push({ ...msg, globalIndex: i });
@@ -79,7 +111,6 @@ export default function App() {
         }, 1500);
       }
     });
-    closeSearch();
   };
 
   const registerRef = (idx, el) => {
@@ -87,8 +118,8 @@ export default function App() {
   };
 
   const handleResultClick = (globalIndex) => {
-    setExpanded(false);
-    setTimeout(() => scrollToMessage(globalIndex), 100);
+    closeSearch();
+    setTimeout(() => scrollToMessage(globalIndex), 150);
   };
 
   const closeSearch = () => {
@@ -98,7 +129,7 @@ export default function App() {
   };
 
   return (
-    <div className="app">
+    <div className="app" style={{ position: 'relative' }}>
       <Header
         expanded={expanded}
         onOpenSearch={() => setExpanded(true)}

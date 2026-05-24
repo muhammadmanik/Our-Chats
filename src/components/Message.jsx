@@ -1,8 +1,17 @@
 import { useState, memo } from 'react';
 
-const MEDIA_BASE = '/';
+const mediaSrc = (uri) => {
+  if (!uri) return '';
+  const normalized = uri.replace(/\.[^.]+$/, (ext) => ext.toLowerCase());
+  return '/' + normalized;
+};
 
-const Message = memo(function Message({ message, isMe, globalIndex, registerRef, isGap }) {
+const onMediaLoad = () => {
+    const el = document.getElementById('absolute-last-message');
+    if (el) el.scrollIntoView({ block: 'end' });
+  };
+
+const Message = memo(function Message({ message, isMe, globalIndex, registerRef, isGap, isLast }) {
   const [showTime, setShowTime] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const { type, sender, timestamp, content, mediaUri, duration } = message;
@@ -11,6 +20,11 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
   const openLightbox = (e, src) => { e.stopPropagation(); setLightbox(src); };
   const closeLightbox = () => setLightbox(null);
 
+  const scrollLastIntoView = () => {
+    const el = document.getElementById('absolute-last-message');
+    if (el) el.scrollIntoView({ block: 'end' });
+  };
+
   const renderByType = () => {
     switch (type) {
       case 'image':
@@ -18,10 +32,11 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
           <div className={`msg-content msg-image ${isMe ? 'me' : ''}`} onClick={toggleTime}>
             <img
               className="media-img"
-              src={MEDIA_BASE + mediaUri}
+              src={mediaSrc(mediaUri)}
               alt="Shared image"
               loading="lazy"
-              onClick={(e) => openLightbox(e, MEDIA_BASE + mediaUri)}
+              onClick={(e) => openLightbox(e, mediaSrc(mediaUri))}
+              onLoad={scrollLastIntoView}
             />
             {content && <p className="msg-text">{content}</p>}
           </div>
@@ -29,7 +44,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
       case 'video':
         return (
           <div className={`msg-content msg-video ${isMe ? 'me' : ''}`} onClick={toggleTime}>
-            <video className="media-video" src={MEDIA_BASE + mediaUri} controls preload="metadata" />
+            <video className="media-video" src={mediaSrc(mediaUri)} controls preload="metadata" onLoadedData={scrollLastIntoView} />
             {content && <p className="msg-text">{content}</p>}
           </div>
         );
@@ -38,7 +53,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
           <div className={`msg-content msg-audio ${isMe ? 'me' : ''}`} onClick={toggleTime}>
             <div className="audio-bar">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-              <audio className="audio-player" src={MEDIA_BASE + mediaUri} controls preload="none" />
+              <audio className="audio-player" src={mediaSrc(mediaUri)} controls preload="none" />
             </div>
           </div>
         );
@@ -74,7 +89,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
 
   return (
     <>
-      <div className={msgClass} ref={el => registerRef(globalIndex, el)}>
+      <div className={msgClass} id={isLast ? 'absolute-last-message' : undefined} ref={el => registerRef(globalIndex, el)}>
         {renderByType()}
         <div className={`timestamp ${showTime ? 'visible' : ''}`}>
           {new Date(timestamp).toLocaleString('en-US', {

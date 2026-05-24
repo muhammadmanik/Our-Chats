@@ -4,9 +4,33 @@ import Message from './Message';
 export default function MessageList({ messages, allMessages, visibleCount, loadMore, registerRef, listRef }) {
   const sentinelRef = useRef(null);
   const bottomRef = useRef(null);
-  const initialScroll = useRef(true);
   const [isLoading, setIsLoading] = useState(false);
   const previousScrollHeight = useRef(0);
+
+  const scrollToAbsoluteBottom = () => {
+    const container = document.getElementById('chat-message-container');
+    const lastNode = document.getElementById('absolute-last-message');
+    if (container) {
+      container.scrollTop = container.scrollHeight + 10000;
+    }
+    if (lastNode) {
+      lastNode.scrollIntoView({ block: 'end', behavior: 'auto' });
+    }
+  };
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      scrollToAbsoluteBottom();
+      const t1 = setTimeout(scrollToAbsoluteBottom, 50);
+      const t2 = setTimeout(scrollToAbsoluteBottom, 200);
+      const t3 = setTimeout(scrollToAbsoluteBottom, 500);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [messages]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -33,19 +57,12 @@ export default function MessageList({ messages, allMessages, visibleCount, loadM
     }
   });
 
-  useEffect(() => {
-    if (initialScroll.current && listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-      initialScroll.current = false;
-    }
-  }, []);
-
   const isMe = (sender) => sender === 'Muhammad Manik';
   const isYou = (sender) => sender === 'You';
   const startIdx = allMessages.length - visibleCount;
 
   return (
-    <div className="message-list" ref={listRef}>
+    <div id="chat-message-container" className="message-list" ref={listRef}>
       {visibleCount < allMessages.length && (
         <div ref={sentinelRef} className="scroll-sentinel">
           <span className="load-more-hint">Scroll up to load more...</span>
@@ -69,10 +86,11 @@ export default function MessageList({ messages, allMessages, visibleCount, loadM
             globalIndex={globalIdx}
             registerRef={registerRef}
             isGap={hasGap}
+            isLast={i === messages.length - 1}
           />
         );
       })}
-      <div ref={bottomRef} className="scroll-bottom" />
+      <div ref={el => { bottomRef.current = el; if (el && el.parentElement) { el.parentElement.scrollTop = el.parentElement.scrollHeight; }}} className="scroll-bottom" />
     </div>
   );
 }
