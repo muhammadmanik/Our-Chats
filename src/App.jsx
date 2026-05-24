@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import Header from './components/Header';
 import MessageList from './components/MessageList';
 import rawData from './chatData.json';
@@ -17,31 +17,32 @@ export default function App() {
   const inputRef = useRef(null);
   const searchRef = useRef(null);
 
+  const initialScrollDone = useRef(false);
+
   const visibleMessages = useMemo(
     () => allMessages.current.slice(-visibleCount),
     [visibleCount]
   );
 
-  useLayoutEffect(() => {
-    if (visibleMessages && visibleMessages.length > 0) {
-      const forceScrollToBottom = () => {
-        const container = listRef.current || document.getElementById('chat-message-container');
-        if (container) {
-          container.scrollTop = container.scrollHeight;
-        }
-      };
+  useEffect(() => {
+    if (initialScrollDone.current) return;
 
-      forceScrollToBottom();
-      const t1 = setTimeout(forceScrollToBottom, 50);
-      const t2 = setTimeout(forceScrollToBottom, 150);
-      const t3 = setTimeout(forceScrollToBottom, 400);
+    const performInitialScroll = () => {
+      const container = listRef.current;
+      if (container && container.scrollHeight > 0) {
+        container.scrollTop = container.scrollHeight;
+        initialScrollDone.current = true;
+        clearInterval(scrollCheckInterval);
+      }
+    };
 
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
-    }
+    const scrollCheckInterval = setInterval(performInitialScroll, 30);
+    const safetyTimeout = setTimeout(() => clearInterval(scrollCheckInterval), 1500);
+
+    return () => {
+      clearInterval(scrollCheckInterval);
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   useEffect(() => {
@@ -60,16 +61,21 @@ export default function App() {
   }, [expanded]);
 
   const loadMore = () => {
-    const container = listRef.current || document.getElementById('chat-message-container');
-    const previousScrollHeight = container ? container.scrollHeight : 0;
+    const container = listRef.current;
+    if (!container) {
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allMessages.current.length));
+      return;
+    }
+
+    const oldScrollHeight = container.scrollHeight;
+    const oldScrollTop = container.scrollTop;
 
     setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allMessages.current.length));
 
     requestAnimationFrame(() => {
-      if (container) {
-        const heightDifference = container.scrollHeight - previousScrollHeight;
-        container.scrollTop = container.scrollTop + heightDifference;
-      }
+      const newScrollHeight = container.scrollHeight;
+      const heightDifference = newScrollHeight - oldScrollHeight;
+      container.scrollTop = oldScrollTop + heightDifference;
     });
   };
 
@@ -84,7 +90,7 @@ export default function App() {
     for (let i = 0; i < allMessages.current.length; i++) {
       const msg = allMessages.current[i];
       if (!msg) continue;
-      const messageText = msg.content || msg.text || msg.message;
+      const messageText = msg.content;
       if (typeof messageText !== 'string') continue;
       if (messageText.toLowerCase().includes(targetQuery)) {
         matches.push({ ...msg, globalIndex: i });
@@ -111,6 +117,7 @@ export default function App() {
         }, 1500);
       }
     });
+    closeSearch();
   };
 
   const registerRef = (idx, el) => {
@@ -118,8 +125,8 @@ export default function App() {
   };
 
   const handleResultClick = (globalIndex) => {
-    closeSearch();
-    setTimeout(() => scrollToMessage(globalIndex), 150);
+    setExpanded(false);
+    setTimeout(() => scrollToMessage(globalIndex), 100);
   };
 
   const closeSearch = () => {
