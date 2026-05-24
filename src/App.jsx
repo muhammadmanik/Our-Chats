@@ -17,7 +17,7 @@ export default function App() {
   const inputRef = useRef(null);
   const searchRef = useRef(null);
 
-  const initialScrollDone = useRef(false);
+  const initialScrollCompleted = useRef(false);
 
   const visibleMessages = useMemo(
     () => allMessages.current.slice(-visibleCount),
@@ -25,23 +25,23 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (initialScrollDone.current) return;
+    if (initialScrollCompleted.current) return;
 
-    const performInitialScroll = () => {
+    const forceScrollBottom = () => {
       const container = listRef.current;
       if (container && container.scrollHeight > 0) {
         container.scrollTop = container.scrollHeight;
-        initialScrollDone.current = true;
-        clearInterval(scrollCheckInterval);
+        initialScrollCompleted.current = true;
+        clearInterval(scrollInterval);
       }
     };
 
-    const scrollCheckInterval = setInterval(performInitialScroll, 30);
-    const safetyTimeout = setTimeout(() => clearInterval(scrollCheckInterval), 1500);
+    const scrollInterval = setInterval(forceScrollBottom, 40);
+    const safetyStop = setTimeout(() => clearInterval(scrollInterval), 1500);
 
     return () => {
-      clearInterval(scrollCheckInterval);
-      clearTimeout(safetyTimeout);
+      clearInterval(scrollInterval);
+      clearTimeout(safetyStop);
     };
   }, []);
 
@@ -61,21 +61,20 @@ export default function App() {
   }, [expanded]);
 
   const loadMore = () => {
-    const container = listRef.current;
-    if (!container) {
+    const list = listRef.current;
+    if (!list) {
       setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allMessages.current.length));
       return;
     }
 
-    const oldScrollHeight = container.scrollHeight;
-    const oldScrollTop = container.scrollTop;
+    const previousScrollHeight = list.scrollHeight;
+    const previousScrollTop = list.scrollTop;
 
     setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allMessages.current.length));
 
     requestAnimationFrame(() => {
-      const newScrollHeight = container.scrollHeight;
-      const heightDifference = newScrollHeight - oldScrollHeight;
-      container.scrollTop = oldScrollTop + heightDifference;
+      const newScrollHeight = list.scrollHeight;
+      list.scrollTop = newScrollHeight - previousScrollHeight + previousScrollTop;
     });
   };
 
@@ -136,7 +135,7 @@ export default function App() {
   };
 
   return (
-    <div className="app" style={{ position: 'relative' }}>
+    <div className="app">
       <Header
         expanded={expanded}
         onOpenSearch={() => setExpanded(true)}

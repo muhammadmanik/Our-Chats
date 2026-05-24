@@ -6,12 +6,7 @@ const mediaSrc = (uri) => {
   return '/' + normalized;
 };
 
-const onMediaLoad = () => {
-    const el = document.getElementById('absolute-last-message');
-    if (el) el.scrollIntoView({ block: 'end' });
-  };
-
-const Message = memo(function Message({ message, isMe, globalIndex, registerRef, isGap, isLast }) {
+const Message = memo(function Message({ message, isMe, globalIndex, registerRef, isGap }) {
   const [showTime, setShowTime] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const { type, sender, timestamp, content, mediaUri, duration } = message;
@@ -19,11 +14,6 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
   const toggleTime = () => setShowTime(prev => !prev);
   const openLightbox = (e, src) => { e.stopPropagation(); setLightbox(src); };
   const closeLightbox = () => setLightbox(null);
-
-  const scrollLastIntoView = () => {
-    const el = document.getElementById('absolute-last-message');
-    if (el) el.scrollIntoView({ block: 'end' });
-  };
 
   const renderByType = () => {
     switch (type) {
@@ -36,7 +26,6 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
               alt="Shared image"
               loading="lazy"
               onClick={(e) => openLightbox(e, mediaSrc(mediaUri))}
-              onLoad={scrollLastIntoView}
             />
             {content && <p className="msg-text">{content}</p>}
           </div>
@@ -44,7 +33,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
       case 'video':
         return (
           <div className={`msg-content msg-video ${isMe ? 'me' : ''}`} onClick={toggleTime}>
-            <video className="media-video" src={mediaSrc(mediaUri)} controls preload="metadata" onLoadedData={scrollLastIntoView} />
+            <video className="media-video" src={mediaSrc(mediaUri)} controls preload="metadata" />
             {content && <p className="msg-text">{content}</p>}
           </div>
         );
@@ -62,7 +51,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
           <div className="msg-call" onClick={toggleTime}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             <span className="call-text">{content}</span>
-            {duration && <span className="call-duration"> • {duration}</span>}
+            {duration && <span className="call-duration"> &bull; {duration}</span>}
           </div>
         );
       case 'unsent':
@@ -89,7 +78,7 @@ const Message = memo(function Message({ message, isMe, globalIndex, registerRef,
 
   return (
     <>
-      <div className={msgClass} id={isLast ? 'absolute-last-message' : undefined} ref={el => registerRef(globalIndex, el)}>
+      <div className={msgClass} ref={el => registerRef(globalIndex, el)}>
         {renderByType()}
         <div className={`timestamp ${showTime ? 'visible' : ''}`}>
           {new Date(timestamp).toLocaleString('en-US', {

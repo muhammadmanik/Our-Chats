@@ -1,45 +1,45 @@
-import { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Message from './Message';
 
 export default function MessageList({ messages, allMessages, visibleCount, loadMore, registerRef, listRef }) {
-  const sentinelRef = useRef(null);
-  const bottomRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const previousScrollHeight = useRef(0);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && visibleCount < allMessages.length && !isLoading) {
-        setIsLoading(true);
-        previousScrollHeight.current = listRef.current.scrollHeight;
-        loadMore();
-      }
-    }, { rootMargin: '400px' });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [visibleCount, allMessages.length, loadMore, listRef, isLoading]);
+  const initialScrollDone = useRef(false);
 
   useLayoutEffect(() => {
-    if (isLoading && listRef.current && previousScrollHeight.current > 0) {
-      const heightDifference = listRef.current.scrollHeight - previousScrollHeight.current;
-      if (heightDifference > 0) {
-        listRef.current.scrollTop += heightDifference;
-      }
-      previousScrollHeight.current = 0;
-      setIsLoading(false);
+    if (initialScrollDone.current) return;
+    const container = listRef.current;
+    if (container && container.scrollHeight > 0) {
+      container.scrollTop = container.scrollHeight;
+      initialScrollDone.current = true;
     }
-  });
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) setIsLoading(false);
+  }, [messages]);
+
+  const handleScroll = (e) => {
+    const container = e.target;
+    if (isLoading || visibleCount >= allMessages.length) return;
+    if (container.scrollTop < 100) {
+      setIsLoading(true);
+      loadMore();
+    }
+  };
 
   const isMe = (sender) => sender === 'Muhammad Manik';
   const isYou = (sender) => sender === 'You';
   const startIdx = allMessages.length - visibleCount;
 
   return (
-    <div id="chat-message-container" className="message-list" ref={listRef}>
+    <div
+      id="chat-message-container"
+      className="message-list"
+      ref={listRef}
+      onScroll={handleScroll}
+    >
       {visibleCount < allMessages.length && (
-        <div ref={sentinelRef} className="scroll-sentinel">
+        <div className="scroll-sentinel">
           <span className="load-more-hint">Scroll up to load more...</span>
         </div>
       )}
@@ -61,11 +61,11 @@ export default function MessageList({ messages, allMessages, visibleCount, loadM
             globalIndex={globalIdx}
             registerRef={registerRef}
             isGap={hasGap}
-            isLast={i === messages.length - 1}
+
           />
         );
       })}
-      <div ref={bottomRef} className="scroll-bottom" />
+      <div className="scroll-bottom" />
     </div>
   );
 }
